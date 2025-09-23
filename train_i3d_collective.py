@@ -7,7 +7,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=2, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
-parser.add_argument('-save_model', default='output_dir/test', type=str)
+parser.add_argument('--save_model', default='output_dir/test', type=str)
 parser.add_argument('-root', type=str)
 parser.add_argument('--feature_file', default='collective',
                     help='choose the dataset: collective or volleyball')
@@ -52,7 +52,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
     #                                        videotransforms.RandomHorizontalFlip(),
     # ])
     # test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
-
+    os.makedirs(save_model, exist_ok=True)
     dataset, val_dataset = build_dataset(args=args)
 
     # dataset = Dataset(train_split, 'training', root, mode, train_transforms)
@@ -148,7 +148,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                     optimizer.step()
                     optimizer.zero_grad()
                     lr_sched.step()
-                    writer.add_scalar("Train/Loss", tot_loss/10, steps)
+                    writer.add_scalar("Train/Loss", tot_cls_loss/(10*num_steps_per_update), steps)
                     writer.add_scalar("Train/Error", error, steps)
                     if steps % 100 == 0:
                         # print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/(10*num_steps_per_update), tot_cls_loss/(10*num_steps_per_update), tot_loss/10))
@@ -159,7 +159,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
             if phase == 'val':
                 # print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/num_iter, tot_cls_loss/num_iter, (tot_loss*num_steps_per_update)/num_iter))
                 print('{} Tot Loss: {:.4f}'.format(phase, (tot_loss*num_steps_per_update)/num_iter))
-                writer.add_scalar("Test/Loss", tot_loss/10, steps)
+                writer.add_scalar("Test/Loss", (tot_loss*num_steps_per_update)/num_iter, steps)
                 writer.add_scalar("Test/Error", error, steps)
     writer.close()
 
