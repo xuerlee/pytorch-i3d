@@ -5,7 +5,7 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-batch_size', default=2, type=int)
+parser.add_argument('-batch_size', default=1, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
 parser.add_argument('-root_dir', default='/media/jiqqi/新加卷/dataset/Charades_v1_rgb', type=str)
 parser.add_argument('-train_split', default='/media/jiqqi/新加卷/dataset/charades.json', type=str)
@@ -113,9 +113,11 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                 # compute classification loss (with max-pooling along time B x C x T)
                 cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
                 tot_cls_loss += cls_loss.item()
-
                 # compute classification errors
-                error = 100 - accuracy(per_frame_logits, labels)[0]
+                C = per_frame_logits.shape[1]
+                accuracy_logits = per_frame_logits.permute(0, 2, 1).contiguous().reshape(-1, C)
+                accuracy_labels = labels.permute(0, 2, 1).contiguous().argmax(dim=-1).reshape(-1).long()
+                error = 100 - accuracy(accuracy_logits, accuracy_labels)[0]
 
                 # compute total loss
                 loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
