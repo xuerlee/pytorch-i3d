@@ -108,18 +108,18 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
 
                 # compute localization loss
                 loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
-                tot_loc_loss += loc_loss.data[0]
+                tot_loc_loss += loc_loss.item()
 
                 # compute classification loss (with max-pooling along time B x C x T)
                 cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
-                tot_cls_loss += cls_loss.data[0]
+                tot_cls_loss += cls_loss.item()
 
                 # compute classification errors
                 error = 100 - accuracy(per_frame_logits, labels)[0]
 
                 # compute total loss
                 loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
-                tot_loss += loss.data[0]
+                tot_loss += loss.item()
                 loss.backward()
 
                 if num_iter == num_steps_per_update and phase == 'train':
