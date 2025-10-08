@@ -1,11 +1,13 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   
+# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 #os.environ["CUDA_VISIBLE_DEVICES"]='0,1,2,3'
 import sys
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
+parser.add_argument('-root_dir', default='/media/jiqqi/新加卷/dataset/Charades_v1_rgb', type=str)
+parser.add_argument('-train_split', default='/media/jiqqi/新加卷/dataset/charades.json', type=str)
 parser.add_argument('-save_model', default='output_dir/test', type=str)
 parser.add_argument('-root', type=str)
 
@@ -18,6 +20,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.autograd import Variable
+from torch.utils.tensorboard import SummaryWriter
 
 import torchvision
 from torchvision import datasets, transforms
@@ -25,12 +28,13 @@ import videotransforms
 
 import numpy as np
 
+from util.misc import accuracy
 from pytorch_i3d import InceptionI3d
 
 from charades_dataset import Charades as Dataset
 
 
-def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', train_split='charades/charades.json', batch_size=8*5, save_model=''):
+def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/dataset/Charades_v1_rgb', train_split='/media/jiqqi/新加卷/dataset/charades.json', batch_size=8*5, save_model=''):
     # setup dataset
     train_transforms = transforms.Compose([videotransforms.RandomCrop(224),
                                            videotransforms.RandomHorizontalFlip(),
@@ -62,6 +66,8 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
     lr = init_lr
     optimizer = optim.SGD(i3d.parameters(), lr=lr, momentum=0.9, weight_decay=0.0000001)
     lr_sched = optim.lr_scheduler.MultiStepLR(optimizer, [300, 1000])
+    writer_dir = args.save_model.split('/')[-1]
+    writer = SummaryWriter(log_dir=f'runs/{writer_dir}')
 
 
     num_steps_per_update = 4 # accum gradient
@@ -89,7 +95,6 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                 num_iter += 1
                 # get the inputs
                 inputs, labels = data
-                print(inputs, labels)
 
                 # wrap them in Variable
                 inputs = Variable(inputs.cuda())
@@ -108,6 +113,10 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                 cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
                 tot_cls_loss += cls_loss.data[0]
 
+                # compute classification errors
+                error = 100 - accuracy(per_frame_logits, labels)[0]
+
+                # compute total loss
                 loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
                 tot_loss += loss.data[0]
                 loss.backward()
@@ -120,14 +129,22 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                     lr_sched.step()
                     if steps % 10 == 0:
                         print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/(10*num_steps_per_update), tot_cls_loss/(10*num_steps_per_update), tot_loss/10))
-                        # save model
-                        torch.save(i3d.module.state_dict(), save_model+str(steps).zfill(6)+'.pt')
+                        writer.add_scalar("Train/cls_loss", tot_cls_loss / (10*num_steps_per_update), steps)
+                        writer.add_scalar("Train/loc_loss", tot_loc_loss / (10*num_steps_per_update), steps)
+                        writer.add_scalar("Train/Loss", tot_loss / 10, steps)
+                        writer.add_scalar("Train/Error", error, steps)
                         tot_loss = tot_loc_loss = tot_cls_loss = 0.
+                    if steps % 100 == 0:
+                        torch.save(i3d.module.state_dict(), save_model + str(steps).zfill(6) + '.pt')
             if phase == 'val':
                 print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/num_iter, tot_cls_loss/num_iter, (tot_loss*num_steps_per_update)/num_iter))
-    
+                writer.add_scalar("Test/cls_loss", tot_cls_loss / num_iter, steps)
+                writer.add_scalar("Test/loc_loss", tot_loc_loss / num_iter, steps)
+                writer.add_scalar("Test/Loss", (tot_loss*num_steps_per_update)/num_iter, steps)
+                writer.add_scalar("Test/Error", error, steps)
+    writer.close()
 
 
 if __name__ == '__main__':
     # need to add argparse
-    run(mode=args.mode, root=args.root, save_model=args.save_model)
+    run(root=args.root_dir, train_split=args.train_split, save_model=args.save_model)
