@@ -155,7 +155,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                         writer.add_scalar("Train/Error", error, steps)
                         tot_loss  = tot_cls_loss = 0.
                     if steps % 100 == 0:
-                        torch.save(i3d.module.state_dict(), save_model + str(steps).zfill(6) + '.pt')
+                        torch.save(i3d.module.state_dict(), save_model + '/'+ str(steps).zfill(6) + '.pt')
             if phase == 'val':
                 # print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/num_iter, tot_cls_loss/num_iter, (tot_loss*num_steps_per_update)/num_iter))
                 print('{} Tot Loss: {:.4f}'.format(phase, (tot_loss*num_steps_per_update)/num_iter))
