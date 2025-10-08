@@ -5,6 +5,7 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-batch_size', default=2, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
 parser.add_argument('-root_dir', default='/media/jiqqi/新加卷/dataset/Charades_v1_rgb', type=str)
 parser.add_argument('-train_split', default='/media/jiqqi/新加卷/dataset/charades.json', type=str)
@@ -147,4 +148,4 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
 
 if __name__ == '__main__':
     # need to add argparse
-    run(root=args.root_dir, train_split=args.train_split, save_model=args.save_model)
+    run(root=args.root_dir, train_split=args.train_split, save_model=args.save_model, batch_size=args.batch_size)
