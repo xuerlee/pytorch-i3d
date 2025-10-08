@@ -29,7 +29,7 @@ import videotransforms
 
 import numpy as np
 
-from util.misc import accuracy
+from sklearn.metrics import average_precision_score
 from pytorch_i3d import InceptionI3d
 
 from charades_dataset import Charades as Dataset
@@ -42,6 +42,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
     ])
     test_transforms = transforms.Compose([videotransforms.CenterCrop(224)])
 
+    os.makedirs(save_model, exist_ok=True)
     dataset = Dataset(train_split, 'training', root, mode, train_transforms)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
@@ -111,13 +112,8 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                 tot_loc_loss += loc_loss.item()
 
                 # compute classification loss (with max-pooling along time B x C x T)
-                cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
+                cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])  # sigmoid + BCE
                 tot_cls_loss += cls_loss.item()
-                # compute classification errors
-                C = per_frame_logits.shape[1]
-                accuracy_logits = per_frame_logits.permute(0, 2, 1).contiguous().reshape(-1, C)
-                accuracy_labels = labels.permute(0, 2, 1).contiguous().argmax(dim=-1).reshape(-1).long()
-                error = 100 - accuracy(accuracy_logits, accuracy_labels)[0]
 
                 # compute total loss
                 loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
@@ -135,7 +131,17 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                         writer.add_scalar("Train/cls_loss", tot_cls_loss / (10*num_steps_per_update), steps)
                         writer.add_scalar("Train/loc_loss", tot_loc_loss / (10*num_steps_per_update), steps)
                         writer.add_scalar("Train/Loss", tot_loss / 10, steps)
-                        writer.add_scalar("Train/Error", error, steps)
+
+                        # compute classification errors
+                        probs = torch.sigmoid(per_frame_logits).amax(dim=2)  # [B, C]
+                        labels = labels.float().amax(
+                            dim=2)  # [B, C]  # get the maximum logits/lables for each cls over time dimension  (if one cls appears for 1 frame, it is positive in this clip)
+                        preds = (probs > 0.5).float()
+                        mAP = average_precision_score(labels.cpu().numpy(),
+                                                      probs.detach().cpu().numpy(),
+                                                      average='macro')
+                        writer.add_scalar("Train/Average_precision", mAP, steps)
+
                         tot_loss = tot_loc_loss = tot_cls_loss = 0.
                     if steps % 100 == 0:
                         torch.save(i3d.module.state_dict(), save_model + '/'+ str(steps).zfill(6) + '.pt')
@@ -144,7 +150,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                 writer.add_scalar("Test/cls_loss", tot_cls_loss / num_iter, steps)
                 writer.add_scalar("Test/loc_loss", tot_loc_loss / num_iter, steps)
                 writer.add_scalar("Test/Loss", (tot_loss*num_steps_per_update)/num_iter, steps)
-                writer.add_scalar("Test/Error", error, steps)
+                writer.add_scalar("Test/Average_precision", mAP, steps)
     writer.close()
 
 
