@@ -164,9 +164,9 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                     labels_bt = labels
                     phase_probs.append(logits_bt.detach().cpu())
                     phase_labels.append(labels_bt.detach().cpu())
-                logits_all = torch.cat(phase_probs, dim=0).numpy()  # [N, C]
-                labels_all = torch.cat(phase_labels, dim=0).numpy()  # [N, C]
-                error = 100 - accuracy(logits_all, labels_all)[0]
+            logits_all = torch.cat(phase_probs, dim=0)  # [N, C]
+            labels_all = torch.cat(phase_labels, dim=0)  # [N, C]
+            error = 100 - accuracy(logits_all, labels_all)[0]
 
             if phase == 'train':
                 writer.add_scalar("Train/Error", error, steps)
