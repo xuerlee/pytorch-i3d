@@ -5,7 +5,7 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=1, type=int)
+parser.add_argument('--batch_size', default=2, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
 parser.add_argument('--save_model', default='output_dir/test', type=str)
 parser.add_argument('-root', type=str)
@@ -15,9 +15,9 @@ parser.add_argument('--img_path',
                     default='/home/jiqqi/data/new-new-collective/ActivityDataset', type=str)
 parser.add_argument('--ann_path',
                     default='/home/jiqqi/data/social_CAD/anns', type=str)
-parser.add_argument('--img_w', default=720, type=int,
+parser.add_argument('--img_w', default=224, type=int,
                     help='width of resized images')
-parser.add_argument('--img_h', default=480, type=int,
+parser.add_argument('--img_h', default=224, type=int,
                     help='heigh of resized images')
 parser.add_argument('--is_training', default=True, type=bool,
                     help='data preparation may have differences')
@@ -132,6 +132,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
 
                 logits = i3d(inputs)
                 logits = torch.squeeze(logits)
+                print(logits.shape, labels.shape)
 
                 # upsample to input size (we only have label for the whole clip)
                 # per_frame_logits = F.upsample(per_frame_logits, t, mode='linear')
