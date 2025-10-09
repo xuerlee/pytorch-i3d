@@ -91,6 +91,9 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
             tot_cls_loss = 0.0
             num_iter = 0
             optimizer.zero_grad()
+
+            phase_probs = []
+            phase_labels = []
             
             # Iterate over data.
             for data in dataloaders[phase]:
@@ -105,7 +108,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
 
                 per_frame_logits = i3d(inputs)
                 # upsample to input size
-                per_frame_logits = F.upsample(per_frame_logits, t, mode='linear')
+                per_frame_logits = F.interpolate(per_frame_logits, t, mode='linear')
 
                 # compute localization loss
                 loc_loss = F.binary_cross_entropy_with_logits(per_frame_logits, labels)
@@ -118,9 +121,9 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                 # compute total loss
                 loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
                 tot_loss += loss.item()
-                loss.backward()
 
                 if num_iter == num_steps_per_update and phase == 'train':
+                    loss.backward()
                     steps += 1
                     num_iter = 0
                     optimizer.step()
@@ -132,19 +135,26 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
                         writer.add_scalar("Train/loc_loss", tot_loc_loss / (10*num_steps_per_update), steps)
                         writer.add_scalar("Train/Loss", tot_loss / 10, steps)
 
-                        # compute classification errors
-                        probs = torch.sigmoid(per_frame_logits).amax(dim=2)  # [B, C]
-                        labels = labels.float().amax(
-                            dim=2)  # [B, C]  # get the maximum logits/lables for each cls over time dimension  (if one cls appears for 1 frame, it is positive in this clip)
-                        preds = (probs > 0.5).float()
-                        mAP = average_precision_score(labels.cpu().numpy(),
-                                                      probs.detach().cpu().numpy(),
-                                                      average='macro')
-                        writer.add_scalar("Train/Average_precision", mAP, steps)
-
                         tot_loss = tot_loc_loss = tot_cls_loss = 0.
                     if steps % 100 == 0:
                         torch.save(i3d.module.state_dict(), save_model + '/'+ str(steps).zfill(6) + '.pt')
+
+                with torch.no_grad():
+                    probs_bt = torch.sigmoid(per_frame_logits).amax(dim=2)
+                    labels_bt = labels.float().amax(dim=2)  # [B, C]
+                    preds_bt = (probs_bt > 0.5).float()
+                    phase_probs.append(probs_bt.detach().cpu())
+                    phase_labels.append(labels_bt.detach().cpu())
+
+            probs_all = torch.cat(phase_probs, dim=0).numpy()  # [N, C]
+            labels_all = torch.cat(phase_labels, dim=0).numpy()  # [N, C]
+            ap_per_class = average_precision_score(labels_all, probs_all, average=None)  # [C]
+            pos_mask = (labels_all.sum(axis=0) > 0)
+            mAP = float(np.mean(ap_per_class[pos_mask])) if pos_mask.any() else 0.0
+
+            if phase == 'train':
+                writer.add_scalar("Train/Average_precision", mAP, steps)
+
             if phase == 'val':
                 print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/num_iter, tot_cls_loss/num_iter, (tot_loss*num_steps_per_update)/num_iter))
                 writer.add_scalar("Test/cls_loss", tot_cls_loss / num_iter, steps)
