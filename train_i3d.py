@@ -99,8 +99,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/media/jiqqi/新加卷/da
             for data in dataloaders[phase]:
                 num_iter += 1
                 # get the inputs
-                inputs, labels = data
-
+                inputs, labels = data  # shape: B, C, T, H, W
                 # wrap them in Variable
                 inputs = Variable(inputs.cuda())
                 t = inputs.size(2)

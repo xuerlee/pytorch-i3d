@@ -110,8 +110,7 @@ class Unit3D(nn.Module):
         #print x.size()
         #print pad
         x = F.pad(x, pad)
-        #print x.size()        
-
+        #print x.size()
         x = self.conv3d(x)
         if self._use_batch_norm:
             x = self.bn(x)

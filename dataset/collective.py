@@ -230,19 +230,22 @@ class Collective_Dataset(data.Dataset):
         for i, (sid, src_fid, fid) in enumerate(select_frames[2]):  # 10 frames for 1 item
             img = cv2.imread(self.img_path + '/seq%02d/frame%04d.jpg' % (sid, fid))[:, :, [2, 1, 0]]  # BGR -> RGB  # H, W, 3
             img = Image.fromarray(img)
+            img, bboxes = self.transform(img, bbox)
             imgs.append(img)
 
         # labels for the whole video clip (the label of the key frame)
         meta = {}
         imgs = np.stack(imgs)
-        imgs = self.transform(imgs)  # t, h, w, c = img.shape
-        bboxes = np.array(bboxes, dtype=np.float64).reshape(-1, 4)
+
+        # imgs = self.transform(imgs)  # t, h, w, c = img.shape
+        # bboxes = np.array(bbox, dtype=np.float64).reshape(-1, 4)
+
         actions = np.array(actions, dtype=np.int32)
         activities = np.array(activities, dtype=np.int32)
         one_hot_matrix = np.array(one_hot_matrix, dtype=np.int32)
 
         imgs = torch.from_numpy(imgs).float()
-        imgs = torch.squeeze(imgs, 1)  # shape: (10, 3, H, W)
+        imgs = torch.squeeze(imgs, 1)
         bboxes = torch.from_numpy(bboxes).float()
         # bboxes = torch.unsqueeze(bboxes[0], 0)
         actions = torch.from_numpy(actions).long()

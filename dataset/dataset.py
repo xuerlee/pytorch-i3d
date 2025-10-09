@@ -5,6 +5,7 @@ import torch.utils.data as data
 import torchvision
 
 from torchvision import datasets, transforms
+import util.transforms as visiontransforms
 import videotransforms
 
 from .collective import collective_path, collective_read_dataset, collective_all_frames, Collective_Dataset
@@ -27,24 +28,24 @@ def build(args):
         test_anns = collective_read_dataset(test_ann_file)
         test_frames = collective_all_frames(test_anns, num_frames)
 
-        # train_transform = visiontransforms.Compose([
-        # visiontransforms.RandomHorizontalFlip(),
-        # visiontransforms.Resize((args.img_h, args.img_w)),  # bbox resize is integrated in roialingn part
+        train_transform = visiontransforms.Compose([
+        visiontransforms.RandomHorizontalFlip(),
+        visiontransforms.Resize((args.img_h, args.img_w)),  # bbox resize is integrated in roialingn part
         # visiontransforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
-        # visiontransforms.ToTensor(),
+        visiontransforms.ToTensor(),
         # visiontransforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        # ])
-        #
-        # test_transform = visiontransforms.Compose([
-        # visiontransforms.Resize((args.img_h, args.img_w)),
-        # visiontransforms.ToTensor(),
-        # visiontransforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        # ])
-
-        train_transform = transforms.Compose([videotransforms.RandomCrop(224),
-                                               videotransforms.RandomHorizontalFlip(),
         ])
-        test_transform = transforms.Compose([videotransforms.CenterCrop(224)])
+
+        test_transform = visiontransforms.Compose([
+        visiontransforms.Resize((args.img_h, args.img_w)),
+        visiontransforms.ToTensor(),
+        # visiontransforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])
+
+        # train_transform = transforms.Compose([videotransforms.RandomCrop(224),
+        #                                        videotransforms.RandomHorizontalFlip(),
+        # ])
+        # test_transform = transforms.Compose([videotransforms.CenterCrop(224)])
 
         train_dataset = Collective_Dataset(train_anns, train_frames, args.img_path, train_transform,
                                           num_frames=args.num_frames, is_training=args.is_training)

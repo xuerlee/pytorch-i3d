@@ -5,7 +5,7 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=2, type=int)
+parser.add_argument('--batch_size', default=1, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
 parser.add_argument('--save_model', default='output_dir/test', type=str)
 parser.add_argument('-root', type=str)
@@ -15,6 +15,10 @@ parser.add_argument('--img_path',
                     default='/home/jiqqi/data/new-new-collective/ActivityDataset', type=str)
 parser.add_argument('--ann_path',
                     default='/home/jiqqi/data/social_CAD/anns', type=str)
+parser.add_argument('--img_w', default=720, type=int,
+                    help='width of resized images')
+parser.add_argument('--img_h', default=480, type=int,
+                    help='heigh of resized images')
 parser.add_argument('--is_training', default=True, type=bool,
                     help='data preparation may have differences')
 parser.add_argument('--num_frames', default=10, type=int,
@@ -112,17 +116,19 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                 num_iter += 1
                 # get the inputs
                 inputs, labels, meta = data
-                inputs, _ = inputs.decompose()  # B, T, H, W, C
+                inputs, _ = inputs.decompose()  # B, T, H, W, C (original transform); B, T, C, H, W (own transform)
                 labels = labels[3]
 
                 # wrap them in Variable
                 # inputs = Variable(inputs.cuda())
                 inputs = inputs.to('cuda')
-                inputs = inputs.permute(0, 4, 1, 2, 3).contiguous()  # B, C, T, H, W
+                # inputs = inputs.permute(0, 4, 1, 2, 3).contiguous()  # B, C, T, H, W
+                inputs = inputs.permute(0, 2, 1, 3, 4).contiguous()  # B, C, T, H, W
                 t = inputs.size(2)
 
                 # labels = Variable(labels.cuda())
                 labels = labels.to('cuda')
+
 
                 logits = i3d(inputs)
                 logits = torch.squeeze(logits)
