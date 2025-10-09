@@ -103,6 +103,9 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
             tot_cls_loss = 0.0
             num_iter = 0
             optimizer.zero_grad()
+
+            phase_probs = []
+            phase_labels = []
             
             # Iterate over data.
             for data in dataloaders[phase]:
@@ -134,15 +137,14 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                 # compute classification loss (with max-pooling along time B x C x T)
                 # cls_loss = F.binary_cross_entropy_with_logits(torch.max(per_frame_logits, dim=2)[0], torch.max(labels, dim=2)[0])
                 cls_loss = F.cross_entropy(logits, labels)
-                error = 100 - accuracy(logits, labels)[0]
 
                 tot_cls_loss += cls_loss.item()
                 # loss = (0.5*loc_loss + 0.5*cls_loss)/num_steps_per_update
                 loss = cls_loss/num_steps_per_update
                 tot_loss += loss.item()
-                loss.backward()
 
                 if num_iter == num_steps_per_update and phase == 'train':
+                    loss.backward()
                     steps += 1
                     num_iter = 0
                     optimizer.step()
@@ -156,6 +158,19 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
                         tot_loss  = tot_cls_loss = 0.
                     if steps % 100 == 0:
                         torch.save(i3d.module.state_dict(), save_model + '/'+ str(steps).zfill(6) + '.pt')
+
+                with torch.no_grad():
+                    logits_bt = logits
+                    labels_bt = labels
+                    phase_probs.append(logits_bt.detach().cpu())
+                    phase_labels.append(labels_bt.detach().cpu())
+                logits_all = torch.cat(phase_probs, dim=0).numpy()  # [N, C]
+                labels_all = torch.cat(phase_labels, dim=0).numpy()  # [N, C]
+                error = 100 - accuracy(logits_all, labels_all)[0]
+
+            if phase == 'train':
+                writer.add_scalar("Train/Error", error, steps)
+
             if phase == 'val':
                 # print('{} Loc Loss: {:.4f} Cls Loss: {:.4f} Tot Loss: {:.4f}'.format(phase, tot_loc_loss/num_iter, tot_cls_loss/num_iter, (tot_loss*num_steps_per_update)/num_iter))
                 print('{} Tot Loss: {:.4f}'.format(phase, (tot_loss*num_steps_per_update)/num_iter))
