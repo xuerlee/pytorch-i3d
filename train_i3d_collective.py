@@ -21,7 +21,7 @@ parser.add_argument('--img_h', default=224, type=int,
                     help='heigh of resized images')
 parser.add_argument('--is_training', default=True, type=bool,
                     help='data preparation may have differences')
-parser.add_argument('--num_frames', default=10, type=int,
+parser.add_argument('--num_frames', default=20, type=int,
                     help='number of stacked frame features')
 
 args = parser.parse_args()
@@ -131,8 +131,8 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
 
 
                 logits = i3d(inputs)
-                logits = torch.squeeze(logits)
-                print(logits.shape, labels.shape)
+                logits = logits.mean(dim=-1)
+                # logits = torch.squeeze(logits)  # only 224 * 224 can be -> bs * num_cls
 
                 # upsample to input size (we only have label for the whole clip)
                 # per_frame_logits = F.upsample(per_frame_logits, t, mode='linear')
