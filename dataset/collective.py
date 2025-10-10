@@ -26,14 +26,20 @@ FRAMES_SIZE = {1: (480, 720), 2: (480, 720), 3: (480, 720), 4: (480, 720), 5: (4
                41: (480, 720), 42: (480, 720), 43: (480, 720), 44: (480, 720)}
 
 def collective_path(img_root, ann_root):
-    train_seqs = [str(i + 1) for i in range(32)]
+    # train_seqs = [str(i + 1) for i in range(32)]
     # val_seqs = [str(i + 1) for i in range(32)]
-    val_seqs = [str(i + 33) for i in range(12)]
+    # val_seqs = [str(i + 33) for i in range(12)]
     # val_seqs = [str(44)]
 
     # for testing code runing one seq
     # train_seqs = [str(i + 1) for i in range(1)]
     # val_seqs = [str(i + 1) for i in range(1)]
+
+    # random seqs
+    all_seqs = [str(i + 1) for i in range(44)]
+    random.shuffle(all_seqs)
+    train_seqs = all_seqs[:32]
+    val_seqs = all_seqs[32:]
 
     train_seq_path = [img_root / ('seq' + train_seq.zfill(2)) for train_seq in train_seqs]
     val_seq_path = [img_root / ('seq' + val_seq.zfill(2)) for val_seq in val_seqs]
