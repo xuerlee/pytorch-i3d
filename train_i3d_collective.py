@@ -74,7 +74,8 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
         i3d = InceptionI3d(400, in_channels=2)
         i3d.load_state_dict(torch.load('models/flow_imagenet.pt'))
     else:
-        i3d = InceptionI3d(400, in_channels=3)
+        # i3d = InceptionI3d(400, in_channels=3)
+        i3d = InceptionI3d(157, in_channels=3)
         # i3d.load_state_dict(torch.load('models/rgb_imagenet.pt'))
         i3d.load_state_dict(torch.load('models/rgb_charades.pt'))
     i3d.replace_logits(6)
