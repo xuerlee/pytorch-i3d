@@ -5,7 +5,7 @@ import sys
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=2, type=int)
+parser.add_argument('--batch_size', default=1, type=int)
 parser.add_argument('-mode', default='rgb', type=str, help='rgb or flow')
 parser.add_argument('--save_model', default='output_dir/test', type=str)
 parser.add_argument('-root', type=str)
@@ -21,7 +21,7 @@ parser.add_argument('--img_h', default=224, type=int,
                     help='heigh of resized images')
 parser.add_argument('--is_training', default=True, type=bool,
                     help='data preparation may have differences')
-parser.add_argument('--num_frames', default=20, type=int,
+parser.add_argument('--num_frames', default=17, type=int,
                     help='number of stacked frame features')
 
 args = parser.parse_args()
@@ -75,7 +75,8 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
         i3d.load_state_dict(torch.load('models/flow_imagenet.pt'))
     else:
         i3d = InceptionI3d(400, in_channels=3)
-        i3d.load_state_dict(torch.load('models/rgb_imagenet.pt'))
+        # i3d.load_state_dict(torch.load('models/rgb_imagenet.pt'))
+        i3d.load_state_dict(torch.load('models/rgb_charades.pt'))
     i3d.replace_logits(6)
     #i3d.load_state_dict(torch.load('/ssd/models/000920.pt'))
     i3d.cuda()
