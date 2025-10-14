@@ -50,7 +50,7 @@ from dataset import build_dataset
 
 
 
-def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', train_split='charades/charades.json', batch_size=8*5, save_model=''):
+def run(init_lr=0.01, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', train_split='charades/charades.json', batch_size=8*5, save_model=''):
     # setup dataset
     # train_transforms = transforms.Compose([videotransforms.RandomCrop(224),
     #                                        videotransforms.RandomHorizontalFlip(),
@@ -85,7 +85,7 @@ def run(init_lr=0.1, max_steps=64e3, mode='rgb', root='/ssd/Charades_v1_rgb', tr
 
     lr = init_lr
     optimizer = optim.SGD(i3d.parameters(), lr=lr, momentum=0.9, weight_decay=0.0000001)
-    lr_sched = optim.lr_scheduler.MultiStepLR(optimizer, [10000, 50000])
+    lr_sched = optim.lr_scheduler.MultiStepLR(optimizer, [90, 50000])
     writer_dir = args.save_model.split('/')[-1]
     writer = SummaryWriter(log_dir=f'runs/{writer_dir}')
 
